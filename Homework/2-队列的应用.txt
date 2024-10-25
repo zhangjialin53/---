@@ -1,0 +1,126 @@
+队列的应用
+描述
+输入一个n*m的0 1矩阵，1表示该位置有东西，0表示该位置没有东西。所有四邻域联通的1算作一个区域，仅在矩阵边缘联通的不算作区域。求区域数。此算法在细胞计数上会经常用到。
+
+对于所有数据，0<=n,m<=1000
+
+下载编译并运行p44.cpp生成随机测试数据
+
+输入
+第1行2个正整数n，m, 表示要输入的矩阵行数和列数
+第2—n+1行为n*m的矩阵，每个元素的值为0或1。
+输出
+1行，代表区域数
+样例1
+输入
+5 5
+0 0 0 1 1
+0 1 0 0 0
+0 1 1 0 0
+0 1 0 0 0
+0 0 0 0 0
+样例输出
+1
+
+样例2
+输入
+9 9
+0 0 0 1 1 0 0 0 0
+0 1 1 0 0 1 1 1 0
+0 1 1 0 0 1 1 1 0
+0 0 0 0 0 1 0 0 0
+0 0 0 0 0 0 0 0 0
+0 1 1 1 1 1 1 1 0
+0 0 1 0 1 0 1 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+输出
+3
+
+#include <iostream>
+#include <queue>
+using namespace std;
+
+const int MAXN = 1000;  // 假设最大n、m是1000
+int grid[MAXN][MAXN];    // 存储输入的矩阵
+bool visited[MAXN][MAXN]; // 访问标记数组
+
+// 四个方向：上、下、左、右
+int dx[4] = { -1, 1, 0, 0 };
+int dy[4] = { 0, 0, -1, 1 };
+
+// 辅助函数：检查坐标 (x, y) 是否在矩阵范围内且未被访问
+bool isValid(int x, int y, int n, int m) {
+    return x >= 0 && x < n && y >= 0 && y < m && grid[x][y] == 1 && !visited[x][y];
+}
+
+// BFS 方法遍历区域，并判断该区域是否有非边缘的元素
+bool bfs(int x, int y, int n, int m) {
+    queue<pair<int, int>> q;
+    q.push({ x, y });
+    visited[x][y] = true;
+
+    bool hasInner = false;  // 标记区域中是否有非边缘的1
+
+    while (!q.empty()) {
+        int curX = q.front().first;
+        int curY = q.front().second;
+        q.pop();
+
+        // 如果当前 (curX, curY) 不在边缘，则标记有非边缘元素
+        if (curX > 0 && curX < n - 1 && curY > 0 && curY < m - 1) {
+            hasInner = true;
+        }
+
+        // 尝试向四个方向扩展
+        for (int i = 0; i < 4; ++i) {
+            int newX = curX + dx[i];
+            int newY = curY + dy[i];
+
+            if (isValid(newX, newY, n, m)) {
+                visited[newX][newY] = true;
+                q.push({ newX, newY });
+            }
+        }
+    }
+
+    return hasInner;  // 返回是否存在非边缘的元素
+}
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+
+    // 读取矩阵
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
+            cin >> grid[i][j];
+        }
+    }
+
+    // 初始化 visited 数组
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
+            visited[i][j] = false;
+        }
+    }
+
+    int regionCount = 0;  // 计数区域数量
+
+    // 遍历矩阵，寻找未访问过的1并判断是否为有效区域
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
+            // 如果遇到一个未访问的1，启动一次BFS并判断是否为有效区域
+            if (grid[i][j] == 1 && !visited[i][j]) {
+                if (bfs(i, j, n, m)) {
+                    regionCount++;  // 只有包含非边缘元素时，才计数为区域
+                }
+            }
+        }
+    }
+
+    // 输出结果
+    cout << regionCount << endl;
+
+    return 0;
+}
