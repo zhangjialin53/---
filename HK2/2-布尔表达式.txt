@@ -1,0 +1,192 @@
+题目描述
+计算如下布尔表达式 ( V | V ) & F & ( F | V ) 其中V表示True，F表示False，|表示or，&表示and，！表示not（运算符优先级not> and > or）
+
+输入：
+文件输入，有若干（A<=20）个表达式，其中每一行为一个表达式。 表达式有（N<=100）个符号，符号间可以用任意空格分开，或者没有空格，所以表达式的总长度，即字符的个数，是未知的。
+
+对于20%的数据，有A<=5，N<=20，且表达式中包含V、F、&、|
+
+对于40%的数据，有A<=10，N<=50，且表达式中包含V、F、&、|、!
+
+对于100%的数据，有A<=20，N<=100，且表达式中包含V、F、&、|、!、(、)
+
+所有测试数据中都可能穿插空格
+
+下载并运行96.py生成随机测试数据
+
+输出：
+
+对测试用例中的每个表达式输出“Expression”，后面跟着序列号和“: ”，然后是相应的测试表达式的结果（V或F），每个表达式结果占一行（注意冒号后面有空格）。
+
+样例输入	样例输出
+(V|V)&F&(F|V)	Expression 1: F
+!V|V&V&!F&(F|V)&(!F|F|!V&V)	Expression 2: V
+(F&F|V|!V&!F&!(F|F&V))	Expression 3: V
+提示：
+利用栈对表达式求值
+
+#include <iostream>
+#include <stack>
+#include <string>
+#include <cctype>
+
+using namespace std;
+
+// 操作符的优先级
+int precedence(char op) {
+    if (op == '!') return 3; // '!' 优先级最高
+    if (op == '&') return 2; // '&' 次之
+    if (op == '|') return 1; // '|' 最低
+    return 0;
+}
+
+// 双目运算符处理 (用于 '&' 和 '|')
+bool applyOp(char op, bool a, bool b) {
+    if (op == '&') return a && b;
+    if (op == '|') return a || b;
+    return false;
+}
+
+// 单目运算符处理 (用于 '!')
+bool applyNot(bool a) {
+    return !a;
+}
+
+// 判断是否是有效字符
+bool isValidChar(char c) {
+    return c == 'V' || c == 'F' || c == '&' || c == '|' || c == '!' || c == '(' || c == ')';
+}
+
+// 计算表达式
+bool evaluateExpression(const string& expr) {
+    stack<bool> values;  // 值栈
+    stack<char> ops;     // 操作符栈
+    int n = expr.size();
+
+    for (int i = 0; i < n; i++) {
+        // 跳过空格
+        if (isspace(expr[i])) continue;
+
+        // 处理布尔值 V(True) 和 F(False)
+        if (expr[i] == 'V') {
+            values.push(true);
+        }
+        else if (expr[i] == 'F') {
+            values.push(false);
+        }
+        // 处理左括号 '('
+        else if (expr[i] == '(') {
+            ops.push('(');
+        }
+        // 处理右括号 ')'
+        else if (expr[i] == ')') {
+            while (!ops.empty() && ops.top() != '(') {
+                char op = ops.top();
+                ops.pop();
+
+                if (op == '!') {
+                    if (values.empty()) return false; // 防止栈为空时的访问错误
+                    bool val = values.top();
+                    values.pop();
+                    values.push(applyNot(val));
+                }
+                else {
+                    if (values.size() < 2) return false; // 检查是否有足够的值
+                    bool b = values.top(); values.pop();
+                    bool a = values.top(); values.pop();
+                    values.push(applyOp(op, a, b));
+                }
+            }
+            if (!ops.empty()) ops.pop(); // 弹出 '('
+        }
+        // 处理操作符 '!'、'&'、'|'
+        else if (expr[i] == '&' || expr[i] == '|') {
+            while (!ops.empty() && precedence(ops.top()) >= precedence(expr[i])) {
+                char op = ops.top();
+                ops.pop();
+
+                if (op == '!') {
+                    if (values.empty()) return false; // 防止栈为空时的访问错误
+                    bool val = values.top();
+                    values.pop();
+                    values.push(applyNot(val));
+                }
+                else {
+                    if (values.size() < 2) return false; // 检查是否有足够的值
+                    bool b = values.top(); values.pop();
+                    bool a = values.top(); values.pop();
+                    values.push(applyOp(op, a, b));
+                }
+            }
+            ops.push(expr[i]); // 当前操作符入栈
+        }
+        else if (expr[i] == '!') {
+            // 处理连续的 '!'
+            int count = 0;
+            while (i < n && expr[i] == '!') {
+                count++;
+                i++;
+            }
+            i--; // 因为外面的 for 循环还会自增
+            // 将奇数个感叹号入栈
+            if (count % 2 == 1) {
+                ops.push('!');
+            }
+            // 偶数个感叹号不入栈
+        }
+        else {
+            // 如果遇到非法字符，则返回错误
+            return false;
+        }
+    }
+
+    // 处理剩余的操作符
+    while (!ops.empty()) {
+        char op = ops.top();
+        ops.pop();
+
+        if (op == '!') {
+            if (values.empty()) return false; // 防止栈为空时的访问错误
+            bool val = values.top();
+            values.pop();
+            values.push(applyNot(val));
+        }
+        else {
+            if (values.size() < 2) return false; // 检查是否有足够的值
+            bool b = values.top(); values.pop();
+            bool a = values.top(); values.pop();
+            values.push(applyOp(op, a, b));
+        }
+    }
+
+    // 返回栈中的最终结果，如果栈中只有一个值
+    return values.size() == 1 ? values.top() : false;
+}
+
+int main() {
+    string expr;
+    int index = 1;
+
+    // 从输入中读取每一行表达式并计算结果
+    while (getline(cin, expr)) {
+        // 检查表达式中的所有字符是否合法
+        bool validInput = true;
+        for (char c : expr) {
+            if (!isValidChar(c) && !isspace(c)) {
+                validInput = false; // 发现无效字符
+                break;
+            }
+        }
+
+        if (!validInput) {
+            cout << "输入错误" << endl;
+        }
+        else {
+            bool result = evaluateExpression(expr);
+            cout << "Expression " << index << ": " << (result ? "V" : "F") << endl;
+        }
+        index++;
+    }
+
+    return 0;
+}
